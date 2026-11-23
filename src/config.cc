@@ -32,7 +32,7 @@ constexpr Uint32Field kUint32Fields[] = {
 
 constexpr std::string_view kFilterStringKeys[] = {"workload_api_cluster", "workloadApiCluster",
                                                  "expected_spiffe_id", "expectedSpiffeId",
-                                                 "audiences"};
+                                                 "audiences", "header_name", "headerName"};
 
 bool isPrintableNoSpace(std::string_view value) {
   if (value.empty()) {
@@ -41,6 +41,22 @@ bool isPrintableNoSpace(std::string_view value) {
   for (const char c : value) {
     const auto u = static_cast<unsigned char>(c);
     if (u <= 0x20 || u == 0x7f) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool isValidHeaderName(std::string_view value) {
+  if (value.empty() || value.size() > 64 || value == "authorization" || value.front() == ':') {
+    return false;
+  }
+  for (const char c : value) {
+    const bool token_char = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                            c == '!' || c == '#' || c == '$' || c == '%' || c == '&' ||
+                            c == '\'' || c == '*' || c == '+' || c == '-' || c == '.' ||
+                            c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
+    if (!token_char) {
       return false;
     }
   }
@@ -146,6 +162,11 @@ bool validateFilterConfig(FilterConfig& cfg, std::string& error) {
     error = "expected_spiffe_id must be a spiffe:// URI with a path";
     return false;
   }
+  if (!isValidHeaderName(cfg.header_name)) {
+    error = "header_name must be a lowercase HTTP token of 1-64 characters, "
+            "not a pseudo-header, and not authorization";
+    return false;
+  }
   if (cfg.audiences.empty() || cfg.audiences.size() > 8) {
     error = "audiences must list between 1 and 8 entries";
     return false;
@@ -224,7 +245,8 @@ bool parseFilterConfig(std::string_view bytes, FilterConfig& out, std::string& e
   if (!readString(doc, {"workload_api_cluster", "workloadApiCluster"}, true,
                   out.workload_api_cluster, error) ||
       !readString(doc, {"expected_spiffe_id", "expectedSpiffeId"}, true, out.expected_spiffe_id,
-                  error)) {
+                  error) ||
+      !readString(doc, {"header_name", "headerName"}, false, out.header_name, error)) {
     return false;
   }
   const Value* audiences = doc.find("audiences");

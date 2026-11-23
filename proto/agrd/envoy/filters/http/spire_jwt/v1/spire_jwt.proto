@@ -85,6 +85,16 @@ message FilterConfig {
   // Maximum number of requests that may wait for one credential fetch, across
   // all workers. Requests above the limit are rejected with 503. Default 128.
   uint32 max_pending_requests = 10;
+
+  // Request header that carries the credential. Must be a lowercase HTTP token
+  // of at most 64 characters, must not be a pseudo-header, and must not be
+  // "authorization". Default "x-machine-token".
+  //
+  // On a protected route the filter removes this header and any "x-machine-token"
+  // that differs from it, then sets exactly one value under this name. That keeps
+  // a caller from smuggling a credential under the default name when a deployment
+  // renames the header.
+  string header_name = 11;
 }
 
 // PerRouteConfig is the typed_per_filter_config for

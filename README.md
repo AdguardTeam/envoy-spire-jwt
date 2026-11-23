@@ -121,11 +121,16 @@ typed_per_filter_config:
 The route key must match the filter chain name exactly, including the
 `envoy.filters.http.dynamic_modules/` prefix.
 
+To send a different header, add `"headerName": "x-agrd-machine"` to the filter
+config. The name must be a lowercase HTTP token; `authorization` and
+pseudo-headers are rejected at load time.
+
 | Field | Meaning | Default |
 |---|---|---|
 | `workloadApiCluster` | Cluster that reaches the Workload API over a Unix socket and HTTP/2 | required |
 | `expectedSpiffeId` | The only identity this filter accepts | required |
 | `audiences` | Allowlist a route audience must appear in | required |
+| `headerName` | Request header that carries the credential: lowercase HTTP token, at most 64 characters, not a pseudo-header and not `authorization` | `x-machine-token` |
 | `refreshMarginSeconds` | Refresh in the background when this much life is left | 60 |
 | `minRemainingSeconds` | Never inject a credential with less life than this | 30 |
 | `maxTokenLifetimeSeconds` | Reject longer-lived credentials, 0 disables | 0 |
@@ -146,8 +151,10 @@ a typo cannot silently disable injection.
 | Over `maxPendingRequests` | Reject immediately |
 | Fetch failed, still in backoff | Reject immediately; no request waits for a fetch that will not happen |
 
-- Exactly one `X-Machine-Token` reaches the upstream. Any caller value is removed.
-  `Authorization` is never read or written.
+- Exactly one credential header reaches the upstream: the configured `headerName`.
+  On a protected route the filter removes that header and any `x-machine-token`
+  that differs from it, then sets one value, so renaming the header cannot leave a
+  forged value under the default name. `Authorization` is never read or written.
 - Unprotected routes pass through unchanged, including a caller-supplied
   `X-Machine-Token`.
 - HTTP clients receive `503`. gRPC clients receive HTTP 200 with

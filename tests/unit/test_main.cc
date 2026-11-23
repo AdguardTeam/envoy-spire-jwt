@@ -162,6 +162,7 @@ void testConfigValid() {
   CHECK(parseFilterConfig(baseFilterJson(), cfg, error));
   CHECK(cfg.workload_api_cluster == "spire_agent");
   CHECK(cfg.expected_spiffe_id == kSpiffeId);
+  CHECK(cfg.header_name == "x-machine-token");
   CHECK(cfg.refresh_margin_seconds == 60);
   CHECK(cfg.min_remaining_seconds == 30);
   CHECK(cfg.max_token_lifetime_seconds == 0);
@@ -193,6 +194,28 @@ void testConfigOverridesAndAliases() {
   CHECK(cfg.max_pending_requests == 7);
   CHECK(cfg.allowsAudience("billing"));
   CHECK(cfg.allowsAudience("reporter-service"));
+}
+
+void testHeaderNameConfig() {
+  FilterConfig cfg;
+  std::string error;
+  CHECK(parseFilterConfig(baseFilterJson(), cfg, error));
+  CHECK(cfg.header_name == "x-machine-token");
+
+  CHECK(parseFilterConfig(baseFilterJson(R"("headerName":"x-agrd-machine")"), cfg, error));
+  CHECK(cfg.header_name == "x-agrd-machine");
+
+  CHECK(parseFilterConfig(baseFilterJson(R"("header_name":"x_custom.header~1")"), cfg, error));
+  CHECK(cfg.header_name == "x_custom.header~1");
+
+  CHECK(!parseFilterConfig(baseFilterJson(R"("headerName":"X-Machine-Token")"), cfg, error));
+  CHECK(!parseFilterConfig(baseFilterJson(R"("headerName":":path")"), cfg, error));
+  CHECK(!parseFilterConfig(baseFilterJson(R"("headerName":"authorization")"), cfg, error));
+  CHECK(!parseFilterConfig(baseFilterJson(R"("headerName":"")"), cfg, error));
+  CHECK(!parseFilterConfig(baseFilterJson(R"("headerName":"has space")"), cfg, error));
+
+  const std::string too_long(65, 'a');
+  CHECK(!parseFilterConfig(baseFilterJson("\"headerName\":\"" + too_long + "\""), cfg, error));
 }
 
 void testConfigRejects() {
@@ -654,6 +677,7 @@ int main() {
   testJson();
   testConfigValid();
   testConfigOverridesAndAliases();
+  testHeaderNameConfig();
   testConfigRejects();
   testPerRoute();
   testJwtClaims();

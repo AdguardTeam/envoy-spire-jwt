@@ -78,9 +78,11 @@ Fail-closed sources:
    not authentication: the SPIRE Agent attests the workload independently and
    decides what to issue. A Pod that fails attestation receives an error or a
    different identity, both of which the filter rejects.
-4. **Header integrity**: the filter removes every caller `X-Machine-Token` on a
-   protected route and sets exactly one value. `Authorization` is never read or
-   written.
+4. **Header integrity**: on a protected route the filter removes the configured
+   credential header and, when it differs, the default `x-machine-token`, then sets
+   exactly one value under the configured name. A deployment that renames the header
+   therefore cannot leave a forged value under the default name. `Authorization` is
+   never read or written.
 5. **No leakage to other destinations**: credentials are added on the request
    path, after routing. An internal redirect or a retry to another cluster keeps
    the route's decision; a route that does not enable injection never receives a

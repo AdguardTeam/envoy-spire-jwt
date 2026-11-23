@@ -65,6 +65,7 @@ static_resources:
                     "workloadApiCluster": "spire_agent_workload_api",
                     "expectedSpiffeId": "spiffe://infra.agrd.dev/environment/dev/service/reporter",
                     "audiences": ["reporter-service"],
+                    "headerName": "x-agrd-machine",
                     "refreshMarginSeconds": 60,
                     "minRemainingSeconds": 30,
                     "fetchTimeoutMs": 500,

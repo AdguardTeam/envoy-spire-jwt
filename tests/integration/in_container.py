@@ -30,6 +30,8 @@ EXTERNAL_API = os.environ.get("WORKLOAD_API_EXTERNAL") == "1"
 EXPECTED_ID = os.environ.get("EXPECTED_SPIFFE_ID",
                              "spiffe://infra.agrd.dev/environment/dev/service/reporter")
 AUDIENCE = os.environ.get("AUDIENCE", "reporter-service")
+HEADER = os.environ.get("CREDENTIAL_HEADER", "x-agrd-machine")
+LEGACY_HEADER = "x-machine-token"
 LISTENER = "http://127.0.0.1:8181"
 ADMIN = "http://127.0.0.1:9901"
 COUNTER = "http://127.0.0.1:8099/count"
@@ -172,7 +174,8 @@ def main():
         status = wait_status(LISTENER + "/", 200, timeout=60, headers={"Host": "protected.test"})
         check("protected route serves with the Agent available", status == 200, str(status))
 
-    status, _, body = protected({"x-machine-token": "forged-value",
+    status, _, body = protected({HEADER: "forged-value",
+                                 LEGACY_HEADER: "legacy-forged",
                                  "Authorization": "Bearer application-owned"})
     problems = []
     if status != 200:
@@ -183,7 +186,9 @@ def main():
     except Exception:
         problems.append("body is not JSON")
     headers = payload.get("headers", {})
-    tokens = headers.get("x-machine-token", [])
+    tokens = headers.get(HEADER, [])
+    if HEADER != LEGACY_HEADER and LEGACY_HEADER in headers:
+        problems.append(f"default header was not stripped: {headers.get(LEGACY_HEADER)!r}")
     claims = {}
     if len(tokens) != 1:
         problems.append(f"x-machine-token={tokens}")

@@ -30,7 +30,7 @@ using agrd::spire_jwt::FilterConfig;
 using agrd::spire_jwt::PerRouteConfig;
 using agrd::spire_jwt::WaiterRegistry;
 
-constexpr std::string_view kHeaderName = "x-machine-token";
+constexpr std::string_view kDefaultHeaderName = "x-machine-token";
 constexpr std::string_view kWorkloadApiPath = "/spiffe.workload.v1.SPIFFEWorkloadAPI/FetchJWTSVID";
 
 int64_t nowMs() {
@@ -353,8 +353,12 @@ private:
       sendUnavailable(*handle, metrics_, coordinator_.pending(), "no_machine_credential");
       return;
     }
-    handle->requestHeaders().remove(kHeaderName);
-    handle->requestHeaders().set(kHeaderName, credential->svid);
+    const std::string& header = config().header_name;
+    handle->requestHeaders().remove(header);
+    if (header != kDefaultHeaderName) {
+      handle->requestHeaders().remove(kDefaultHeaderName);
+    }
+    handle->requestHeaders().set(header, credential->svid);
     handle->incrementCounterValue(metrics_.cache_hit, 1);
     handle->setGaugeValue(metrics_.requests_waiting, coordinator_.pending());
     handle->continueRequest();
@@ -384,13 +388,17 @@ public:
       return HeadersStatus::Stop;
     }
     const std::string audience = route->config().audience;
-    headers.remove(kHeaderName);
+    const std::string& header = state_->config().header_name;
+    headers.remove(header);
+    if (header != kDefaultHeaderName) {
+      headers.remove(kDefaultHeaderName);
+    }
 
     std::shared_ptr<const Credential> credential;
     const CacheState state = state_->lookup(audience, credential);
     if (state != CacheState::Missing) {
       handle_.incrementCounterValue(state_->metrics().cache_hit, 1);
-      headers.set(kHeaderName, credential->svid);
+      headers.set(header, credential->svid);
       if (state == CacheState::Stale) {
         state_->requestRefresh(audience);
       }

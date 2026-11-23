@@ -12,6 +12,7 @@ constexpr size_t kMaxConfigBytes = 64 * 1024;
 struct FilterConfig {
   std::string workload_api_cluster;
   std::string expected_spiffe_id;
+  std::string header_name{"x-machine-token"};
   std::vector<std::string> audiences;
   uint32_t refresh_margin_seconds{60};
   uint32_t min_remaining_seconds{30};

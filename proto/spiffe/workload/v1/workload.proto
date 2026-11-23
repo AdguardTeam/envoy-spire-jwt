@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Subset of the SPIFFE Workload API v1
+// (github.com/spiffe/go-spiffe proto/spiffe/workload/workload.proto, the
+// normative copy of the Workload API for SPIRE 1.15.x). Only the messages this
+// filter uses are kept. Field numbers and names are unchanged; do not renumber.
+// src/spire_workload_api.cc parses this encoding directly.
+
+syntax = "proto3";
+
+package spiffe.workload.v1;
+
+service SPIFFEWorkloadAPI {
+  rpc FetchJWTSVID(JWTSVIDRequest) returns (JWTSVIDResponse);
+}
+
+message JWTSVIDRequest {
+  // Required. The audience(s) the workload intends to authenticate against.
+  repeated string audience = 1;
+
+  // Optional. The requested SPIFFE ID. The agent decides which identity to
+  // issue based on workload attestation; this field is a selector, not an
+  // authorization. The filter always sends its configured identity and then
+  // verifies the returned identity.
+  string spiffe_id = 2;
+}
+
+message JWTSVIDResponse {
+  // Required. The list of returned JWT-SVIDs.
+  repeated JWTSVID svids = 1;
+}
+
+message JWTSVID {
+  // Required. The SPIFFE ID of the JWT-SVID.
+  string spiffe_id = 1;
+
+  // Required. Encoded JWT using JWS Compact Serialization.
+  string svid = 2;
+
+  // Optional. Operator-specified hint, for example `internal` or `external`.
+  string hint = 3;
+}

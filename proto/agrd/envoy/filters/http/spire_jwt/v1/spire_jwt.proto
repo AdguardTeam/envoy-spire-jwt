@@ -1,0 +1,99 @@
+// Configuration contract for the agrd.filters.http.spire_jwt Envoy HTTP
+// filter. This file is the normative schema and the source for the operator's
+// code generation.
+//
+// Envoy cannot resolve a custom google.protobuf.Any type URL, so the runtime
+// form is the proto3 JSON encoding of FilterConfig carried in a
+// google.protobuf.StringValue. Field names follow proto3 JSON (camelCase); the
+// module also accepts the snake_case names. Unknown keys are rejected.
+//
+// Example:
+//
+//   filter_config:
+//     "@type": type.googleapis.com/google.protobuf.StringValue
+//     value: |
+//       {"workloadApiCluster": "spire_agent_workload_api",
+//        "expectedSpiffeId": "spiffe://infra.agrd.dev/environment/dev/service/reporter",
+//        "audiences": ["reporter-service"]}
+//
+// src/config.cc implements the reader; keep the two in sync.
+
+syntax = "proto3";
+
+package agrd.envoy.filters.http.spire_jwt.v1;
+
+option go_package = "bit.int.agrd.dev/projects/GO/repos/ebala-service/gen/agrd/envoy/filters/http/spire_jwt/v1;spirejwtv1";
+
+// FilterConfig holds everything the filter may trust. No request header, route
+// header, or downstream peer can override a value from this message.
+message FilterConfig {
+  // Name of a static Envoy cluster that points at the SPIRE Agent Workload API
+  // Unix domain socket over HTTP/2. A dynamic module cannot open sockets, so
+  // the socket path lives in the cluster definition, not here.
+  //
+  // Example cluster:
+  //
+  //   name: spire_agent_workload_api
+  //   type: STATIC
+  //   connect_timeout: 1s
+  //   load_assignment:
+  //     cluster_name: spire_agent_workload_api
+  //     endpoints:
+  //     - lb_endpoints:
+  //       - endpoint:
+  //           address:
+  //             pipe:
+  //               path: /run/spire/agent-sockets/spire-agent.sock
+  //   typed_extension_protocol_options:
+  //     envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+  //       "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+  //       explicit_http_config:
+  //         http2_protocol_options: {}
+  string workload_api_cluster = 1;
+
+  // The one SPIFFE ID this filter is allowed to receive. SPIRE attests the
+  // workload independently; this value is a client-side assertion that is
+  // compared with the identity returned by the Workload API.
+  string expected_spiffe_id = 2;
+
+  // Audiences a route may select. A route audience must appear in this list.
+  // The list is a set: order is not significant.
+  repeated string audiences = 3;
+
+  // Refresh a credential asynchronously once it has this many seconds left.
+  // The current credential keeps serving until the refresh succeeds.
+  // Default 60.
+  uint32 refresh_margin_seconds = 4;
+
+  // Never inject a credential with less than this many seconds left.
+  // Default 30. Must not exceed refresh_margin_seconds + 30.
+  uint32 min_remaining_seconds = 5;
+
+  // Reject a credential whose total lifetime exceeds this value. 0 disables
+  // the check. Default 0.
+  uint32 max_token_lifetime_seconds = 6;
+
+  // Timeout of one FetchJWTSVID RPC. Default 500.
+  uint32 fetch_timeout_ms = 7;
+
+  // Backoff after a failed fetch. Default 200.
+  uint32 retry_initial_backoff_ms = 8;
+
+  // Backoff ceiling. Default 5000.
+  uint32 retry_max_backoff_ms = 9;
+
+  // Maximum number of requests that may wait for one credential fetch, across
+  // all workers. Requests above the limit are rejected with 503. Default 128.
+  uint32 max_pending_requests = 10;
+}
+
+// PerRouteConfig is the typed_per_filter_config for
+// envoy.filters.http.dynamic_modules. Injection is off unless a route sets
+// enabled to true.
+message PerRouteConfig {
+  // Inject X-Machine-Token on this route.
+  bool enabled = 1;
+
+  // Audience for this route. Must appear in FilterConfig.audiences.
+  string audience = 2;
+}

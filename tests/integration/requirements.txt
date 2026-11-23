@@ -1,0 +1,3 @@
+grpcio==1.68.1 \
+    --hash=sha256:f8261fa2a5f679abeb2a0a93ad056d765cdca1c47745eda3f2d87f874ff4b8c9 \
+    --hash=sha256:919d7f18f63bcad3a0f81146188e90274fde800a94e35d42ffe9eadf6a9a6330

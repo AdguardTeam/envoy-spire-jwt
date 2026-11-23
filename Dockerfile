@@ -52,7 +52,8 @@ RUN set -eux; \
     for f in src/*.cc; do \
       $CXX $CXXFLAGS -Wall -Wextra -Werror -c "$f" -o "/out/$(basename "$f" .cc).o"; \
     done; \
-    $CXX -shared -static-libstdc++ -static-libgcc -o /out/libspire_jwt.so /out/*.o
+    $CXX -shared -static-libstdc++ -static-libgcc -Wl,--wrap=arc4random \
+      -o /out/libspire_jwt.so /out/*.o
 
 # ---------------------------------------------------------------------------
 # Stage: test - unit tests for the parts that do not need an Envoy process. A
@@ -75,9 +76,21 @@ RUN set -eux; \
     grep -q "ALL TESTS PASSED" /test/result
 
 # ---------------------------------------------------------------------------
-# Stage: envoy - the pinned upstream binary, used only as the e2e runtime.
+# Stage: envoy - the pinned upstream binary, used as the target runtime.
 # ---------------------------------------------------------------------------
 FROM envoyproxy/envoy:v${ENVOY_VERSION} AS envoy
+
+# The module must load in the exact image it will run in, not only in the bookworm
+# test container. This catches a libc newer than the image's or an incompatible
+# ABI at build time.
+FROM envoy AS compat
+
+ARG ENVOY_VERSION
+
+COPY --from=build /out/libspire_jwt.so /usr/local/lib/envoy-spire-jwt/libspire_jwt.so
+COPY tests/integration/envoy.yaml /tmp/envoy.yaml
+ENV ENVOY_DYNAMIC_MODULES_SEARCH_PATH=/usr/local/lib/envoy-spire-jwt
+RUN envoy --mode validate -c /tmp/envoy.yaml
 
 # ---------------------------------------------------------------------------
 # Stage: e2e - the real Envoy binary, the real module, a Workload API on a Unix
@@ -130,4 +143,4 @@ FROM scratch AS artifact
 
 COPY --from=test /test/result /unit-test-result.txt
 COPY --from=e2e /e2e/result.txt /e2e-result.txt
-COPY --from=build /out/libspire_jwt.so /libspire_jwt.so
+COPY --from=compat /usr/local/lib/envoy-spire-jwt/libspire_jwt.so /libspire_jwt.so

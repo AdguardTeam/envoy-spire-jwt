@@ -42,7 +42,7 @@ released ABI is frozen and grows by addition only.
 Download the asset for your architecture and verify it:
 
 ```sh
-version=v0.1.0
+version=v0.2.1
 arch=amd64   # or arm64
 
 curl -fsSLO "https://github.com/AdguardTeam/envoy-spire-jwt/releases/download/${version}/libspire_jwt-linux-${arch}.so"
